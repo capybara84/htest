@@ -1,3 +1,5 @@
+module Main where
+
 import Data.Char
 import Data.List
 
@@ -96,3 +98,7 @@ parse tokens =
     let (e, _) = parse_expr tokens in
     e
 
+main :: IO ()
+main = do
+    print $ parse $ lexer "(1 + 2) * 3"
+    return ()
