@@ -92,8 +92,8 @@ let seq e1 e2 ctx =
     let (suc1, res1, ctx1) = e1 ctx in
     if suc1 then let (suc2, res2, ctx2) = e2 ctx1 in
         if suc2 then (true, res1 @ res2, ctx2)
-        else (false, [EInt 0], ctx2)
-    else (false, [EInt 0], ctx1)
+        else (false, [], ctx2)
+    else (false, [], ctx1)
 
 let sel e1 e2 ctx =
     let (suc1, res1, ctx1) = e1 ctx in
@@ -111,12 +111,12 @@ let rec many e ctx =
 let t_int ctx =
     match ctx with
     | TInt n :: rest -> (true, [EInt n], rest)
-    | _ -> (false, [EInt 0], ctx)
+    | _ -> (false, [], ctx)
 
-let tok t e ctx =
+let tok_skip t ctx =
     match ctx with
-    | x :: rest when x = t -> (true, [e], rest)
-    | _ -> (false, [EInt 0], ctx)
+    | x :: rest when x = t -> (true, [], rest)
+    | _ -> (false, [], ctx)
 
 (*
     program = {expr}
@@ -124,19 +124,25 @@ let tok t e ctx =
     mul_expr = primary {mulop primary}
     primary = num | '(' expr ')'
 *)
-let primary = sel t_int (seq (tok TLpar) (seq expr (tok TRpar))) 
-and mul_expr = seq primary @@ many (seq (sel (tok TStar) (tok TSlash)) primary)
-and expr = seq mul_expr @@ man (seq (sel (tok TPlus) (tok TMinus)) mul_expr)
+let rec expr x = (seq mul_expr @@ many (seq (sel (tok TPlus) (tok TMinus)) mul_expr)) x
+and mul_expr x = (seq primary @@ many (seq (sel (tok TStar) (tok TSlash)) primary)) x
+and primary x = (sel t_int @@ seq (tok_skip TLpar) (seq expr (tok_skip TRpar))) x
 
 let test parse toks =
     let (suc, res, pc) = parse toks in
     if suc then begin
-        print_endline @@ "res: " ^ exp_to_s res
+        print_string "res :";
+        List.iter (fun x -> print_string @@ exp_to_s x ^ " ") res;
+        print_newline ()
     end else
         print_endline "FAIL"
 
 let () =
-    test t_int (TInt 12)
+    test t_int [TInt 12];
+    test (tok TLpar) [TLpar];
+    test (seq (tok TLpar) t_int) [TLpar;TInt 3];
+    test (seq (tok TLpar) (seq t_int (tok TRpar))) [TLpar; TInt 4; TRpar];
+    test expr [TInt 12; TPlus; TInt 23; TStar; TInt 34]
 
 (*
 let test () =
